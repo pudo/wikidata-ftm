@@ -1,4 +1,3 @@
-import requests
 from pprint import pprint
 from followthemoney import model
 from requests_cache import CachedSession
@@ -12,12 +11,64 @@ LINKS = {
     "P43": "stepfather",
     "P44": "stepmother",
     "P1038": "relative",
+    "P3373": "sibling",
     "P7": "brother",
     "P9": "sister",
     # 'P108': 'employer',
     # 'P102': 'party',
     # 'P463': 'member'
 }
+
+IGNORE = set(
+    [
+        "P950",  # Biblioteca Nacional de España ID
+        "P9629",  # Armeniapedia ID
+        "P949",  # National Library of Israel ID
+        "P9368",  # CNA topic ID
+        "P935",  # Commons gallery
+        "P9037",  # BHCL UUID
+        "P5019",  # Brockhaus Enzyklopädie online ID
+        "P4619",  # National Library of Brazil ID
+        "P3509",  # Dagens Nyheter topic ID
+        "P3106",  # Guardian topic ID
+        "P268",  # Bibliothèque nationale de France ID
+        "P244",  # Library of Congress authority ID
+        "P227",  # GND ID
+        "P214",  # VIAF ID
+        "P213",  # ISNI
+        "P1816",  # National Portrait Gallery (London) person ID
+        "P1368",  # LNB ID
+        "P1284",  # Munzinger person ID
+        "P8687",  # social media followers
+        "P8179",  # Canadiana Name Authority ID
+        "P8094",  # GeneaStar person ID
+        "P7982",  # Hrvatska enciklopedija ID
+        "P866",  # Perlentaucher ID
+        "P8850",  # CONOR.KS ID
+        "P7859",  # WorldCat Identities ID
+        "P7929",  # Roglo person ID
+        "P7293",  # PLWABN ID
+        "P7666",  # Visuotinė lietuvių enciklopedija ID
+        "P648",  # Open Library ID
+        "P6200",  # BBC News topic ID
+        "P5361",  # BNB person ID
+        "P4638",  # The Peerage person ID
+        "P3987",  # SHARE Catalogue author ID
+        "P345",  # IMDb ID
+        "P3417",  # Quora topic ID
+        "P3365",  # Treccani ID
+        "P2924",  # Great Russian Encyclopedia Online ID
+        "P2163",  # FAST ID
+        "P1695",  # NLP ID (unique)
+        "P1263",  # NNDB people ID
+        "P1207",  # NUKAT ID
+        "P109",  # signature
+        "P1005",  # Portuguese National Library ID
+        "P1006",  # Nationale Thesaurus voor Auteurs ID
+        "P1015",  # NORAF ID
+        "P646",  # Freebase ID
+    ]
+)
 
 session = CachedSession()
 
@@ -65,6 +116,8 @@ def execute_query(query):
 
         time.sleep(2)
         return
+    if res.status_code != 200:
+        print(res.text)
     data = res.json()
     results = data.get("results", {})
     for result in results.get("bindings"):
@@ -83,9 +136,8 @@ def values(statements, prop, pick=True):
 
 
 def fetch_labels(qid, pick=True):
-    query = """
-    select distinct ?value where { wd:%s rdfs:label ?value . }
-    """
+    query = """select distinct ?value where { wd:%s rdfs:label ?value . }"""
+    # query = """select distinct ?value where { wd:%s rdfs:label ?value . }"""
     for binding in execute_query(query % qid):
         value = binding.get("value", {})
         if not pick or value.get("xml:lang") == "en":
@@ -118,6 +170,8 @@ def fetch_entity(qid):
     statements = {}
     for result in execute_query(query % qid):
         stmt = Statement(result)
+        if stmt.prop in IGNORE:
+            continue
         if stmt.prop not in statements:
             statements[stmt.prop] = []
         statements[stmt.prop].append(stmt)
@@ -133,16 +187,21 @@ def fetch_entity(qid):
     entity.add("alias", values(statements, "rdf-schema#label"))
     entity.add("weakAlias", values(statements, "core#altLabel"))
     entity.add("alias", values(statements, "P1477"))
+    entity.add("alias", values(statements, "P1813"))
     entity.add("name", values(statements, "P1559"))
+    entity.add("title", values(statements, "P511"))
     entity.add("firstName", values(statements, "P735"))
     entity.add("lastName", values(statements, "P734"))
     entity.add("gender", values(statements, "P21", pick=True))
+    entity.add("position", values(statements, "P39", pick=True))
     entity.add("religion", values(statements, "P140", pick=True))
     entity.add("political", values(statements, "P1142", pick=True))
     entity.add("birthDate", values(statements, "P569"))
     entity.add("birthPlace", values(statements, "P19", pick=True))
+    entity.add("deathDate", values(statements, "P570"))
     entity.add("website", values(statements, "P856"))
     entity.add("education", values(statements, "P512", pick=True))
+    entity.add("education", values(statements, "P69", pick=True))
     entity.add("nationality", values(statements, "P27"))
 
     descriptions = statements.pop("description")
@@ -158,4 +217,4 @@ def fetch_entity(qid):
 BOJO = "Q180589"
 
 fetch_entity(BOJO)
-# fetch_labels("Q666112")
+# print(list(fetch_labels("P9")))

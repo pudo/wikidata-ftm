@@ -1,0 +1,34 @@
+SELECT DISTINCT (STRAFTER(STR(?item), STR(wd:)) AS ?wdid)
+               ?name ?wdLabel ?source ?sourceDate
+               (STRAFTER(STR(?positionItem), STR(wd:)) AS ?pid) ?position
+               (STRAFTER(STR(?held), '/statement/') AS ?psid)
+        WHERE {
+          BIND (wd:Q100858235 AS ?cabinet) .
+          BIND (wd:Q30301644 AS ?parent) .
+          # Positions currently in the cabinet
+          ?positionItem p:P361 ?ps .
+          ?ps ps:P361 ?parent .
+          FILTER NOT EXISTS { ?ps pq:P582 [] }
+          # Who currently holds those positions
+          ?item wdt:P31 wd:Q5 ; p:P39 ?held .
+          ?held ps:P39 ?positionItem ; pq:P580 ?start .
+          FILTER NOT EXISTS { ?held wikibase:rank wikibase:DeprecatedRank }
+          FILTER NOT EXISTS { ?held pq:P582 [] }
+          OPTIONAL {
+            ?held prov:wasDerivedFrom ?ref .
+            ?ref pr:P854 ?source #{sourcefilter} .
+            OPTIONAL { ?ref pr:P1810 ?sourceName }
+            OPTIONAL { ?ref pr:P1932 ?statedName }
+            OPTIONAL { ?ref pr:P813 ?sourceDate  }
+          }
+          OPTIONAL { ?item rdfs:label ?wdLabel FILTER(LANG(?wdLabel) = "en") }
+          BIND(COALESCE(?sourceName, ?wdLabel) AS ?name)
+          OPTIONAL { ?positionItem wdt:P1705  ?nativeLabel   FILTER(LANG(?nativeLabel)   = "en") }
+          OPTIONAL { ?positionItem rdfs:label ?positionLabel FILTER(LANG(?positionLabel) = "en") }
+          BIND(COALESCE(?statedName, ?nativeLabel, ?positionLabel) AS ?position)
+          
+          SERVICE wikibase:label {
+            bd:serviceParam wikibase:language "en".
+          }
+        }
+        ORDER BY ?wdLabel ?pid ?sourceDate
