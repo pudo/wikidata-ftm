@@ -10,6 +10,10 @@ https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/queries/examples#Cur
 
 https://stackoverflow.com/questions/46383784/wikidata-get-all-properties-with-labels-and-values-of-an-item/46385132
 
+### Tools
+
+* https://github.com/TheScienceMuseum/elastic-wikidata
+
 ### What do I want?
 
 * People as entities
